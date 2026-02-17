@@ -15,21 +15,36 @@ _start:
     mov edx, longitud
     call imprimir_texto
 
-    mov eax, 10
+    mov ecx, buffer
+    mov edx, 64
+    call leer_texto
+
+    mov esi, buffer
+
+.bucle_principal:
+    mov bl, [esi]
+    cmp bl, 0
+    je fin
+    cmp bl, 0xA
+    je fin
+    cmp bl, 0x20
+    je .saltar_espacio
+    cmp bl, '0'
+    jl .es_operador
+    cmp bl, '9'
+    jg .es_operador
+
+    call ATOI
     call custom_push
+    jmp .bucle_principal
 
-    mov eax, 20
-    call custom_push
+.saltar_espacio:
+    inc esi
+    jmp .bucle_principal
 
-    call custom_pop
-    call ITOA
-
-    call custom_pop
-    call ITOA
-
-    mov eax, 1
-    mov ebx, 0
-    int 0x80
+.es_operador:
+    inc esi
+    jmp .bucle_principal
 
 imprimir_texto:
     mov eax, 4
@@ -101,3 +116,15 @@ custom_pop:
     mov eax, [stack_data + edi]
     mov [stack_ptr], edi
     ret
+
+fin:
+
+    call custom_pop
+    call ITOA
+
+    call custom_pop
+    call ITOA
+
+    mov eax, 1
+    mov ebx, 0
+    int 0x80
