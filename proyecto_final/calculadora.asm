@@ -1,6 +1,7 @@
 section .data
-    mensaje db 'Escribe la operacion RPN (ej: 10 2 /): ', 0xa
+    mensaje db 'Escribe la operacion RPN (ej: 5 -3 +): ', 0xa
     longitud equ $ - mensaje
+    signo_menos db '-'
 
 section .bss
     buffer resb 64
@@ -31,11 +32,23 @@ _start:
     cmp bl, 0x20
     je .saltar_espacio
     
+    cmp bl, '-'
+    je .comprobar_negativo
+
     cmp bl, '0'
     jl .es_operador
     cmp bl, '9'
     jg .es_operador
+    jmp .es_numero
 
+.comprobar_negativo:
+    mov bh, [esi + 1]
+    cmp bh, '0'
+    jl .hacer_resta
+    cmp bh, '9'
+    jg .hacer_resta
+
+.es_numero:
     call ATOI
     call custom_push
     jmp .bucle_principal
@@ -48,9 +61,6 @@ _start:
     cmp bl, '+'
     je .hacer_suma
     
-    cmp bl, '-'
-    je .hacer_resta
-
     cmp bl, '*'
     je .hacer_multiplicacion
 
@@ -82,7 +92,7 @@ _start:
     call custom_pop
     mov ebx, eax
     call custom_pop
-    mul ebx
+    imul ebx
     call custom_push
     inc esi
     jmp .bucle_principal
@@ -91,12 +101,11 @@ _start:
     call custom_pop
     mov ebx, eax
     call custom_pop
-    mov edx, 0
-    div ebx
+    cdq
+    idiv ebx
     call custom_push
     inc esi
     jmp .bucle_principal
-
 
 fin:
     call custom_pop
@@ -120,6 +129,15 @@ leer_texto:
 
 ATOI:
     mov eax, 0
+    mov edi, 0
+
+    mov bl, [esi]
+    cmp bl, '-'
+    jne .bucle_atoi
+    
+    mov edi, 1
+    inc esi
+
 .bucle_atoi:
     mov ebx, 0
     mov bl, [esi]
@@ -131,14 +149,32 @@ ATOI:
     je .fin_atoi
     sub bl, '0'
     mov ecx, 10
-    mul ecx
+    imul ecx
     add eax, ebx
     inc esi
     jmp .bucle_atoi
+
 .fin_atoi:
+    cmp edi, 1
+    jne .salir_atoi
+    neg eax
+.salir_atoi:
     ret
 
 ITOA:
+    cmp eax, 0
+    jge .es_positivo
+    
+    push eax
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, signo_menos
+    mov edx, 1
+    int 0x80
+    pop eax
+    neg eax
+
+.es_positivo:
     mov ecx, 0
     mov ebx, 10
 .bucle_division:
